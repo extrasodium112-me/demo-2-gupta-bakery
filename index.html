@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gupta Bakery - Bill Added</title>
+<meta name="theme-color" content="#E65100">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" id="manifestLink">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--brand:#E65100;--deep:#BF360C;--bg:#FFFBF2;--line:#FFE0B2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:#3E2723}
+.wrap{max-width:1160px;margin:0 auto;padding:0 18px}
+header{position:sticky;top:0;z-index:60;background:linear-gradient(90deg,#E65100,#FF3D00)}
+.topbar{display:flex;gap:8px;padding:12px 0;align-items:center}
+.mark{width:40px;height:40px;background:#fff;color:#E65100;display:grid;place-items:center;border-radius:10px;font-weight:800}
+.searchbox{flex:1}.searchbox input{width:100%;padding:11px 14px;border-radius:10px;border:none}
+.callbtn{background:#fff;color:#BF360C;padding:9px 12px;border-radius:10px;font-weight:800;border:none;cursor:pointer;font-size:12px}
+.menu{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.item{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.thumb{height:140px;position:relative}.thumb img{width:100%;height:100%;object-fit:cover}
+.item-body{padding:10px;flex:1;display:flex;flex-direction:column}
+.qty-row{display:flex;gap:6px;margin:8px 0}.qty-box{display:flex;align-items:center;background:#FFF3E0;border:1.5px solid #FFCC80;border-radius:8px}.qty-box button{border:none;background:none;padding:6px 10px;font-size:16px;color:#E65100;font-weight:800;cursor:pointer}.qty-box input{width:32px;text-align:center;border:none;background:none;font-weight:800}
+.weight-select{flex:1;padding:6px;border:1.5px solid #FFCC80;border-radius:8px;background:#FFF3E0;font-size:11px;font-weight:600}
+.add-btn{background:linear-gradient(90deg,#E65100,#FF3D00);color:#fff;border:none;border-radius:10px;padding:10px;font-weight:800;cursor:pointer;width:100%;margin-top:auto}
+.chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:12px}.chip[aria-pressed="true"]{background:#E65100;color:#fff}
+.cartbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid #FFE0B2;display:none;z-index:90}.cartbar.on{display:block}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:none;place-items:center;padding:12px}.overlay.on{display:grid}
+.box{background:#fff;border-radius:20px;padding:20px;width:100%;max-width:420px;max-height:95vh;overflow:auto}
+.box input{width:100%;padding:11px;border:1.5px solid #FFCC80;border-radius:10px;margin:6px 0}
+.btn-primary{background:linear-gradient(90deg,#E65100,#FF3D00);color:#fff;border:none;padding:12px;border-radius:12px;font-weight:800;cursor:pointer;width:100%}
+.delivery-opt{flex:1;padding:9px;border:2px solid #FFE0B2;border-radius:10px;cursor:pointer;text-align:center;font-weight:700;font-size:12px;background:#fff}.delivery-opt.active{border-color:#E65100;background:#FFF3E0;color:#BF360C}
+.bill-paper{background:#fff;color:#111;padding:20px;border-radius:4px;font-family:monospace;font-size:12px;line-height:1.5;border:1px dashed #ccc}
+#pwaBanner{display:none;position:fixed;left:12px;right:12px;bottom:90px;background:#111;color:#fff;border-radius:16px;padding:12px 14px;z-index:200;align-items:center;justify-content:space-between;gap:12px}.show{display:flex!important}
+@media(max-width:800px){.menu{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="wrap topbar"><span class="mark">GB</span><b style="color:#fff;font-size:13px">Gupta Bakery Mhow</b><div class="searchbox"><input id="search" placeholder="Search..."></div><button id="billBtn" class="callbtn" style="display:none" onclick="openBill()">🧾 Bill</button><button id="userBtn" class="callbtn">Login</button><button id="adminBtn" class="callbtn" style="background:#111;color:#fff">Admin</button></div></header>
+
+<main class="wrap" style="padding:14px 18px 220px">
+<div style="background:linear-gradient(135deg,#FFF3E0,#FFE0B2);border-radius:16px;padding:12px;margin-bottom:12px;display:flex;justify-content:space-between"><div><b style="color:#BF360C;font-size:14px">Fresh in Mhow 453441 🍞</b><br><small style="font-size:11px">Home Delivery +₹15 | Bill Download Available</small></div><small id="userInfo" style="background:#fff;padding:6px 10px;border-radius:20px;font-size:10px">Guest</small></div>
+<div style="display:flex;gap:6px;overflow:auto;margin-bottom:12px" id="filters"></div>
+<div class="menu" id="grid"></div>
+</main>
+
+<div class="cartbar" id="cartbar">
+<div style="display:flex;gap:8px;padding:10px 16px;background:#FFFBF2;border-bottom:1px solid #FFE0B2">
+<div class="delivery-opt active" id="optPickup" onclick="setDelivery('pickup')">🏪 Pickup FREE</div>
+<div class="delivery-opt" id="optDelivery" onclick="setDelivery('delivery')">🛵 Delivery +₹15</div>
+</div>
+<div style="padding:10px 16px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#E65100,#FF3D00);color:#fff">
+<div><b id="cart-count">0 items</b><br><small id="cart-breakup">₹0</small><br><b id="cart-total">₹0</b></div>
+<div style="display:flex;gap:6px"><button onclick="viewBill()" style="background:#fff;color:#E65100;padding:10px 14px;border-radius:10px;border:none;font-weight:800;cursor:pointer">Bill</button><button onclick="checkout()" style="background:#111;color:#fff;padding:10px 18px;border-radius:10px;border:none;font-weight:800;cursor:pointer">Order</button></div>
+</div>
+</div>
+
+<div id="pwaBanner"><div><b style="font-size:13px">Install Gupta Bakery App</b><br><small style="font-size:11px;opacity:.7">Fast order in Mhow</small></div><div style="display:flex;gap:6px"><button onclick="dismissPWA()" style="background:#333;color:#fff;border:none;border-radius:10px;padding:8px 12px">Later</button><button onclick="installPWA()" style="background:#fff;color:#111;border:none;border-radius:10px;padding:8px 14px;font-weight:800">Install</button></div></div>
+
+<!-- PINCODE -->
+<div class="overlay on" id="pincodeGate"><div class="box" style="text-align:center"><h2 style="margin:0;color:#BF360C">📍 Delivery Check</h2><p style="font-size:13px">Only Mhow 453441</p><input id="pinInput" placeholder="453441" maxlength="6" style="text-align:center;font-size:20px;font-weight:800;letter-spacing:4px"><button class="btn-primary" onclick="checkPincode()">Check</button><p id="pinMsg" style="font-size:12px"></p></div></div>
+
+<!-- LOGIN -->
+<div class="overlay" id="loginGate"><div class="box"><h3 style="margin:0 0 8px">👤 Login / Signup</h3><input id="uName" placeholder="Full Name *"><input id="uMobile" placeholder="Mobile *"><input id="uEmail" placeholder="Email"><input id="uAddress" placeholder="Address, Mhow 453441 *"><select id="uPayment" style="width:100%;padding:11px;border:1.5px solid #FFCC80;border-radius:10px;margin:6px 0"><option value="COD">Cash on Delivery</option><option value="Online">Online UPI</option></select><button class="btn-primary" onclick="saveUser()">Save</button><button onclick="closeLogin()" style="width:100%;margin-top:8px;background:none;border:none;color:#8D6E63">Cancel</button></div></div>
+
+<!-- BILL MODAL - NEW -->
+<div class="overlay" id="billModal"><div class="box" style="max-width:400px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0">🧾 Your Bill</h3><button onclick="closeBill()" style="background:#eee;border:none;padding:6px 10px;border-radius:8px;cursor:pointer">Close</button></div>
+<div id="billContent" class="bill-paper"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+<button onclick="downloadBillPDF()" style="background:#111;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:800;cursor:pointer">📥 Download PDF</button>
+<button onclick="shareBill()" style="background:#25D366;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:800;cursor:pointer">📲 Share Bill</button>
+</div>
+<button onclick="printBill()" style="width:100%;margin-top:8px;background:#FFF3E0;color:#E65100;border:1.5px solid #E65100;padding:10px;border-radius:10px;font-weight:700;cursor:pointer">🖨️ Print Bill</button>
+<p style="font-size:10px;color:#8D6E63;text-align:center;margin-top:8px">Bill saved in your phone • Order ID: <span id="billId"></span></p>
+</div></div>
+
+<!-- ADMIN -->
+<div class="overlay" id="adminModal"><div class="box" style="max-width:520px;max-height:90vh;overflow:auto"><div style="display:flex;justify-content:space-between"><h3 style="margin:0">🔧 Admin</h3><button onclick="closeAdmin()" style="background:#eee;border:none;padding:6px 10px;border-radius:8px">Close</button></div><div id="adminLogin"><input id="adminPass" type="password" placeholder="gupta123"><button class="btn-primary" onclick="doAdminLogin()">Login</button><p id="adminMsg" style="font-size:12px;color:red"></p></div><div id="adminContent" style="display:none"><div id="lastOrderBox" style="background:#FFFBF2;border:1px dashed #FFCC80;border-radius:12px;padding:10px;font-size:12px">No order</div><button onclick="sendCustomerConfirmation()" style="width:100%;margin:10px 0;background:#25D366;color:#fff;border:none;padding:12px;border-radius:12px;font-weight:800">📲 Customer Confirm 30-45min</button><button onclick="sendOwnerDetails()" style="width:100%;background:#111;color:#fff;border:none;padding:12px;border-radius:12px;font-weight:800">👑 Owner Details</button><button onclick="openBillFromAdmin()" style="width:100%;margin-top:8px;background:#E65100;color:#fff;border:none;padding:12px;border-radius:12px;font-weight:800">🧾 View & Download Bill</button></div></div></div>
+
+<script>
+// PWA
+const manifestData={name:"Gupta Bakery Mhow",short_name:"Gupta Bakery",start_url:".",display:"standalone",background_color:"#FFFBF2",theme_color:"#E65100",icons:[{src:"https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=192",sizes:"192x192",type:"image/png"},{src:"https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=512",sizes:"512x512",type:"image/png"}]};
+const blob=new Blob([JSON.stringify(manifestData)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(blob);
+let deferredPrompt=null;const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();if(!isMobile)return;deferredPrompt=e;if(localStorage.getItem('pwa_dismissed')!=='1')setTimeout(()=>document.getElementById('pwaBanner').classList.add('show'),1500);});
+function installPWA(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{document.getElementById('pwaBanner').classList.remove('show');deferredPrompt=null;});}else alert("Share > Add to Home Screen");}
+function dismissPWA(){document.getElementById('pwaBanner').classList.remove('show');localStorage.setItem('pwa_dismissed','1');}
+
+// CORE
+const PHONE="918823008888";let deliveryMode="pickup",userData=JSON.parse(localStorage.getItem('gupta_user')||'null'),lastOrderData=JSON.parse(localStorage.getItem('gupta_last_order')||'null'),orderId=localStorage.getItem('gupta_order_id')||'GB-'+Date.now().toString().slice(-6);
+const DEFAULT_ITEMS=[
+{n:"Chocolate truffle cake",c:"Cakes",d:"Dark ganache",p:450,img:"https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500",weights:["500 g - ₹450","1 kg - ₹850"]},
+{n:"Pineapple cake",c:"Cakes",d:"Fresh cream",p:400,img:"https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=500",weights:["500 g - ₹400","1 kg - ₹750"]},
+{n:"Milk bread",c:"Breads",d:"Soft loaf",p:45,tag:"Daily",img:"https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=500",weights:["1 pcs - ₹45","2 pcs - ₹85"]},
+{n:"Veg patties",c:"Savoury",d:"Flaky puff",p:25,tag:"Hot",img:"https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=500",weights:["1 pc - ₹25","2 pcs - ₹45"]},
+{n:"Masala mixture",c:"Namkeen",d:"Spicy mix",p:280,img:"https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=500",weights:["250 g - ₹80","1 kg - ₹280"]}
+];
+const CATS=["All","Cakes","Breads","Savoury","Namkeen"];
+let ITEMS=JSON.parse(localStorage.getItem('gupta_items_final')||'null')||DEFAULT_ITEMS;
+let cart=lastOrderData?lastOrderData.items:{},active="All",query="";
+
+function checkPincode(){let pin=document.getElementById("pinInput").value.trim();if(pin==="453441"){localStorage.setItem('gupta_pincode','453441');document.getElementById("pincodeGate").classList.remove("on");if(!userData)document.getElementById("loginGate").classList.add("on");}else{document.getElementById("pinMsg").textContent="❌ Only 453441";document.getElementById("pinMsg").style.color="red";}}
+if(localStorage.getItem('gupta_pincode')==="453441")document.getElementById("pincodeGate").classList.remove("on");
+function updateUserUI(){if(userData){document.getElementById("userInfo").textContent=userData.name+" • "+userData.mobile;document.getElementById("userBtn").textContent=userData.name.split(" ")[0];if(lastOrderData)document.getElementById("billBtn").style.display="inline-block";}}updateUserUI();
+function saveUser(){let name=document.getElementById("uName").value.trim(),mobile=document.getElementById("uMobile").value.trim(),email=document.getElementById("uEmail").value.trim(),address=document.getElementById("uAddress").value.trim(),payment=document.getElementById("uPayment").value;if(!name||!mobile||!address)return alert("Name Mobile Address bharo");userData={name,mobile,email,address,payment,time:new Date().toLocaleString()};localStorage.setItem('gupta_user',JSON.stringify(userData));document.getElementById("loginGate").classList.remove("on");updateUserUI();}
+function closeLogin(){document.getElementById("loginGate").classList.remove("on");}
+document.getElementById("userBtn").onclick=()=>{document.getElementById("loginGate").classList.add("on");if(userData){document.getElementById("uName").value=userData.name;document.getElementById("uMobile").value=userData.mobile;document.getElementById("uEmail").value=userData.email||"";document.getElementById("uAddress").value=userData.address;}};
+
+const grid=document.getElementById("grid"),filters=document.getElementById("filters");
+CATS.forEach(c=>{let b=document.createElement("button");b.className="chip";b.textContent=c;b.dataset.cat=c;b.setAttribute("aria-pressed",c==="All");b.onclick=()=>{active=c;paint();};filters.appendChild(b);});
+function paint(){
+[...filters.children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.cat===active));
+let q=query.toLowerCase();let list=ITEMS.filter(i=>(active==="All"||i.c===active)&&(!q||(i.n+i.d).toLowerCase().includes(q)));
+grid.innerHTML="";list.forEach((i)=>{let realIdx=ITEMS.indexOf(i);let el=document.createElement("div");el.className="item";el.innerHTML=`<div class="thumb"><img src="${i.img}"></div><div class="item-body"><h3 style="font-size:13px;margin:0">${i.n}</h3><small style="color:#8D6E63">${i.d}</small><div class="qty-row"><select class="weight-select" onchange="ITEMS[${realIdx}].selectedWeight=this.value;paint()">${i.weights.map(w=>`<option ${w===(i.selectedWeight||i.weights[0])?'selected':''}>${w}</option>`).join("")}</select><div class="qty-box"><button onclick="changeQty(${realIdx},-1)">−</button><input value="${i.tempQty||1}" id="qty-${realIdx}"><button onclick="changeQty(${realIdx},1)">+</button></div></div><button class="add-btn" onclick="addToCart(${realIdx})">ADD</button></div>`;grid.appendChild(el);});
+}
+function changeQty(idx,d){let v=Math.max(1,Math.min(20,(ITEMS[idx].tempQty||1)+d));ITEMS[idx].tempQty=v;let inp=document.getElementById(`qty-${idx}`);if(inp)inp.value=v;}
+function addToCart(idx){
+if(!userData){document.getElementById("loginGate").classList.add("on");return;}
+let i=ITEMS[idx];let weight=i.selectedWeight||i.weights[0];let price=parseInt(weight.match(/₹(\d+)/)[1]);let qty=parseInt(document.getElementById(`qty-${idx}`)?.value||i.tempQty||1);
+let key=i.n+"|"+weight;cart[key]={name:i.n,weight,qty,price,total:qty*price};updateCart();
+}
+function setDelivery(mode){deliveryMode=mode;document.getElementById("optPickup").classList.toggle("active",mode==="pickup");document.getElementById("optDelivery").classList.toggle("active",mode==="delivery");updateCart();}
+function updateCart(){
+let keys=Object.keys(cart);document.getElementById("cartbar").classList.toggle("on",keys.length>0);
+let count=keys.reduce((s,k)=>s+cart[k].qty,0);let itemsTotal=keys.reduce((s,k)=>s+cart[k].total,0);let delivery=deliveryMode==="delivery"?15:0;let grand=itemsTotal+delivery;
+document.getElementById("cart-count").textContent=count+" items";document.getElementById("cart-breakup").textContent=deliveryMode==="delivery"?`Items ₹${itemsTotal} + Delivery ₹${delivery}`:`Items ₹${itemsTotal}`;document.getElementById("cart-total").textContent=`Total ₹${grand}`;
+let lines=keys.map(k=>`• ${cart[k].name} (${cart[k].weight}) × ${cart[k].qty} = ₹${cart[k].total}`).join("\n");
+if(!orderId){orderId='GB-'+Date.now().toString().slice(-6);localStorage.setItem('gupta_order_id',orderId);}
+lastOrderData={orderId,user:userData,items:cart,itemsTotal,delivery,grand,mode:deliveryMode,lines,time:new Date().toLocaleString(),date:new Date().toLocaleDateString()};
+localStorage.setItem('gupta_last_order',JSON.stringify(lastOrderData));
+if(userData)document.getElementById("billBtn").style.display="inline-block";
+document.getElementById("lastOrderBox").innerHTML=keys.length?`<b>${userData.name}</b><br>${lines}<br><b>Grand ₹${grand}</b>`: "No order";
+}
+
+// BILL LOGIC - NEW
+function generateBillHTML(){
+if(!lastOrderData)return "No order";
+let d=lastOrderData;
+let itemsRows=Object.values(d.items).map(it=>`<tr><td style="padding:4px 0">${it.name}<br><small>${it.weight}</small></td><td style="text-align:center">${it.qty}</td><td style="text-align:right">₹${it.price}</td><td style="text-align:right">₹${it.total}</td></tr>`).join("");
+return `
+<div style="text-align:center;border-bottom:2px dashed #000;padding-bottom:8px;margin-bottom:8px">
+<b style="font-size:16px">GUPTA BAKERY</b><br>
+Badwani Banglow, Old AB Road<br>Opp High School, Mhow 453441<br>Ph: 8823008888<br>
+<b style="font-size:11px">GSTIN: 23ABCDE1234F1Z5</b>
+</div>
+<div style="font-size:11px;margin-bottom:8px">
+<b>Bill No:</b> ${d.orderId}<br>
+<b>Date:</b> ${d.date} ${d.time}<br>
+<b>Customer:</b> ${d.user.name}<br>
+<b>Mobile:</b> ${d.user.mobile}<br>
+<b>Address:</b> ${d.user.address}<br>
+<b>Payment:</b> ${d.user.payment}<br>
+<b>Type:</b> ${d.mode} ${d.delivery?'(+₹15)':'(FREE)'}
+</div>
+<table style="width:100%;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:6px 0;font-size:11px">
+<tr style="border-bottom:1px solid #000"><th style="text-align:left">Item</th><th>Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amt</th></tr>
+${itemsRows}
+</table>
+<div style="text-align:right;margin-top:8px;font-size:12px">
+Subtotal: ₹${d.itemsTotal}<br>
+Delivery: ₹${d.delivery}<br>
+<b style="font-size:14px">Grand Total: ₹${d.grand}</b><br>
+<small>Inclusive of all taxes</small>
+</div>
+<div style="text-align:center;margin-top:12px;border-top:1px dashed #000;padding-top:8px;font-size:10px">
+Thank you! Visit Again 🙏<br>
+Home Delivery within 30-45min<br>
+Mhow 453441 Only
+</div>
+`;
+}
+function viewBill(){if(!lastOrderData)return alert("Pehle order karo");document.getElementById("billContent").innerHTML=generateBillHTML();document.getElementById("billId").textContent=lastOrderData.orderId;document.getElementById("billModal").classList.add("on");}
+function openBill(){viewBill();}
+function openBillFromAdmin(){viewBill();}
+function closeBill(){document.getElementById("billModal").classList.remove("on");}
+function downloadBillPDF(){
+if(!lastOrderData)return alert("No bill");
+const {jsPDF}=window.jspdf;
+let doc=new jsPDF();
+let y=10;
+doc.setFontSize(14);doc.setFont("helvetica","bold");doc.text("GUPTA BAKERY",105,y,{align:"center"});y+=6;
+doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("Badwani Banglow, Old AB Road, Opp High School, Mhow 453441",105,y,{align:"center"});y+=5;
+doc.text("Ph: 8823008888 | GSTIN: 23ABCDE1234F1Z5",105,y,{align:"center"});y+=8;
+doc.setFontSize(10);doc.text(`Bill No: ${lastOrderData.orderId}`,10,y);y+=5;
+doc.text(`Date: ${lastOrderData.date} ${lastOrderData.time}`,10,y);y+=5;
+doc.text(`Customer: ${lastOrderData.user.name} - ${lastOrderData.user.mobile}`,10,y);y+=5;
+doc.text(`Address: ${lastOrderData.user.address}`,10,y);y+=5;
+doc.text(`Payment: ${lastOrderData.user.payment} | Type: ${lastOrderData.mode}`,10,y);y+=8;
+doc.setFont("helvetica","bold");doc.text("Item",10,y);doc.text("Qty",80,y);doc.text("Rate",110,y);doc.text("Amt",150,y);y+=5;
+doc.setFont("helvetica","normal");
+Object.values(lastOrderData.items).forEach(it=>{
+doc.text(`${it.name} (${it.weight})`,10,y);doc.text(`${it.qty}`,82,y);doc.text(`Rs ${it.price}`,110,y);doc.text(`Rs ${it.total}`,150,y);y+=6;
+if(y>270){doc.addPage();y=10;}
+});
+y+=4;doc.setFont("helvetica","bold");doc.text(`Subtotal: Rs ${lastOrderData.itemsTotal}`,10,y);y+=6;
+doc.text(`Delivery: Rs ${lastOrderData.delivery}`,10,y);y+=6;
+doc.setFontSize(12);doc.text(`Grand Total: Rs ${lastOrderData.grand}`,10,y);y+=10;
+doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("Thank you! Delivery within 30-45min - Mhow 453441 Only",105,y,{align:"center"});
+doc.save(`${lastOrderData.orderId}_GuptaBakery_Bill.pdf`);
+}
+function shareBill(){
+if(!lastOrderData)return;
+let text=`*Gupta Bakery Bill*\nBill No: ${lastOrderData.orderId}\nDate: ${lastOrderData.date}\n\n${lastOrderData.lines}\n\nTotal: Rs ${lastOrderData.grand}\n\nThanks!`;
+if(navigator.share){navigator.share({title:"Gupta Bakery Bill",text});}
+else{window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");}
+}
+function printBill(){
+let w=window.open('','','width=400,height=600');
+w.document.write(`<html><head><title>Bill ${lastOrderData.orderId}</title></head><body>${document.getElementById("billContent").innerHTML}</body></html>`);
+w.document.close();w.print();
+}
+
+function checkout(){
+if(!userData){document.getElementById("loginGate").classList.add("on");return;}
+if(Object.keys(cart).length===0)return alert("Cart empty");
+let msg=`*New Order ${lastOrderData.orderId}*\n👤 ${userData.name}\n📱 ${userData.mobile}\n📍 ${userData.address}\n💳 ${userData.payment}\n\n${lastOrderData.lines}\n\nTotal ₹${lastOrderData.grand} (${lastOrderData.mode})\n\nBill PDF download available on website`;
+window.open("https://wa.me/"+PHONE+"?text="+encodeURIComponent(msg),"_blank");
+setTimeout(()=>{viewBill();},1000);
+}
+function openAdmin(){document.getElementById("adminModal").classList.add("on");}function closeAdmin(){document.getElementById("adminModal").classList.remove("on");}
+document.getElementById("adminBtn").onclick=openAdmin;
+function doAdminLogin(){if(document.getElementById("adminPass").value==="gupta123"){document.getElementById("adminLogin").style.display="none";document.getElementById("adminContent").style.display="block";}else{document.getElementById("adminMsg").textContent="Galat password";}}
+function sendCustomerConfirmation(){
+if(!lastOrderData)return alert("No order");
+let u=lastOrderData.user;let custMsg=`Hi ${u.name}! ✅ Your order ${lastOrderData.orderId} is placed at Gupta Bakery\n\n${lastOrderData.lines}\nTotal ₹${lastOrderData.grand}\n\n🚚 Delivery within 30-45min at ${u.address}\n\n🧾 Bill: Attached PDF from website\n📍 Shop: Mhow 453441`;
+let phone=u.mobile.replace(/\D/g,'');if(phone.length===10)phone='91'+phone;
+window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(custMsg),"_blank");
+}
+function sendOwnerDetails(){
+if(!lastOrderData)return;
+let u=lastOrderData.user;let ownerMsg=`*OWNER COPY ${lastOrderData.orderId}*\n👤 ${u.name}\n📱 ${u.mobile}\n📍 ${u.address}\n💳 ${u.payment}\n\n${lastOrderData.lines}\nGrand ₹${lastOrderData.grand}\nPincode 453441 Verified\nBill generated`;
+window.open("https://wa.me/"+PHONE+"?text="+encodeURIComponent(ownerMsg),"_blank");
+}
+document.getElementById("search").addEventListener("input",e=>{query=e.target.value;paint();});
+paint();if(lastOrderData)updateCart();
+</script>
+</body>
+</html>
